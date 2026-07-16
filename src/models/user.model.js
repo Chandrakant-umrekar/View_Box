@@ -26,16 +26,29 @@ const userSchema = new Schema(
       index: true,
     },
     avatar: {
-      type: String, //cloudnary url
-      required: true,
+      url: {
+        type: String,
+        required: true,
+      },
+      public_id: {
+        type: String,
+        required: true,
+      },
     },
     coverImage: {
-      type: String, //cloudnary url
+      url: {
+        type: String,
+      },
+      public_id: {
+        type: String,
+      },
     },
-    watchHistory: {
-      type: Schema.Types.ObjectId,
-      ref: "Video",
-    },
+    watchHistory: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Video",
+      },
+    ],
     password: {
       type: String,
       required: [true, "Password is required"],
