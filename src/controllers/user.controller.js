@@ -100,8 +100,11 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
-  if (!username || !email) {
+  if (!username && !email) {
     throw new ApiError(400, "username or email is required");
+  }
+  if (!password) {
+    throw new ApiError(400, "password is required");
   }
 
   const user = await User.findOne({
@@ -148,13 +151,9 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-  await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $set: { refreshToken: undefined },
-    },
-    { new: true }
-  );
+  await User.findByIdAndUpdate(req.user._id, {
+    $unset: { refreshToken: 1 },
+  });
 
   const options = {
     httpOnly: true,
@@ -164,7 +163,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   res
     .status(200)
     .clearCookie("accessToken", options)
-    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "User logged out"));
 });
 
