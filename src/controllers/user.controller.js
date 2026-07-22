@@ -257,7 +257,7 @@ const changeUserAvatar = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user?._id);
 
   if (user?.avatar?.public_id) {
-    await deleteFromCloudinary(user.avatar.public_id);
+    await deleteFromCloudinary(user.avatar.public_id, "image");
   }
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
@@ -294,7 +294,7 @@ const changeUserCoverImage = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user?._id);
 
   if (user?.coverImage?.public_id) {
-    await deleteFromCloudinary(user.coverImage.public_id);
+    await deleteFromCloudinary(user.coverImage.public_id, "image");
   }
 
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
@@ -412,14 +412,16 @@ const getWatchHistory = asyncHandler(async (req, res) => {
               localField: "owner",
               foreignField: "_id",
               as: "owner",
-              pipeline: {
+              pipeline: [
                 //nested here because data projection happen in owner field
-                $project: {
-                  fullName: 1,
-                  username: 1,
-                  avatar: 1,
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
+                  },
                 },
-              },
+              ],
             },
           },
           {
