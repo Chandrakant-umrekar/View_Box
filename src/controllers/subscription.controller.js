@@ -2,7 +2,7 @@ import mongoose, { isValidObjectId } from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import { Subscription } from "../models/subscription.model.js";
-import { ApiResponse } from "../utils/ApiResponse";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 const toggleSubscription = asyncHandler(async (req, res) => {
   const { channelId } = req.params;
@@ -89,9 +89,63 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         { subscribers: subscribersList, subscriberCount: totalSubscribers },
-        "Subscriber count fetched"
+        "Subscriber list fetched successfully"
       )
     );
 });
 
-const getSubscribedChannels = asyncHandler(async (req, res) => {});
+const getSubscribedChannels = asyncHandler(async (req, res) => {
+  const { subscriberId } = req.params;
+
+  if (!isValidObjectId(subscriberId)) {
+    throw new ApiError(400, "Invalid channel id");
+  }
+
+  const totalSubscribedChannels = await Subscription.countDocuments({
+    subscriber: subscriberId,
+  });
+
+  const subscribedChannelList = await Subscription.aggregate([
+    {
+      $match: {
+        subscriber: new mongoose.Types.ObjectId(subscriberId),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "channel",
+        foreignField: "_id",
+        as: "channel",
+        pipeline: [
+          {
+            $project: {
+              fullName: 1,
+              username: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$channel",
+    },
+    {
+      $project: {
+        channel: 1,
+      },
+    },
+  ]);
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        subscribedChannels: subscribedChannelList,
+        subscribedChannelsCount: totalSubscribedChannels,
+      },
+      "Channels list fetched successfully"
+    )
+  );
+});
