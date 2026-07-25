@@ -1,4 +1,4 @@
-import { isValidObjectId } from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import { Subscription } from "../models/subscription.model.js";
@@ -11,14 +11,11 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid channel id");
   }
 
-  const existingSubscription = await Subscription.findOne({
-    subscriber: req.user?._id,
-    channel: channelId,
-  });
+  const deletedSubscription = await Subscription.findByIdAndDelete(
+    existingSubscription._id
+  );
 
-  if (existingSubscription) {
-    await Subscription.findByIdAndDelete(existingSubscription._id);
-
+  if (deletedSubscription) {
     return res
       .status(200)
       .json(
@@ -41,3 +38,60 @@ const toggleSubscription = asyncHandler(async (req, res) => {
       new ApiResponse(200, { isSubscribed: true }, "Subscribed successfully")
     );
 });
+
+const getUserChannelSubscribers = asyncHandler(async (req, res) => {
+  const { channelId } = req.params;
+
+  if (!isValidObjectId(channelId)) {
+    throw new ApiError(400, "Invalid channel id");
+  }
+
+  const totalSubscribers = await Subscription.countDocuments({
+    channel: channelId,
+  });
+
+  const subscribersList = await Subscription.aggregate([
+    {
+      $match: {
+        channel: new mongoose.Types.ObjectId(channelId),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "subscriber",
+        foreignField: "_id",
+        as: "subscriber",
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              avatar: 1,
+              fullName: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$subscriber",
+    },
+    {
+      $project: {
+        subscriber: 1,
+      },
+    },
+  ]);
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { subscribers: subscribersList, subscriberCount: totalSubscribers },
+        "Subscriber count fetched"
+      )
+    );
+});
+
+const getSubscribedChannels = asyncHandler(async (req, res) => {});

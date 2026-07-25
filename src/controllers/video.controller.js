@@ -6,6 +6,8 @@ import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 import mongoose, { isValidObjectId } from "mongoose";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
+import { Like } from "../models/like.model.js";
+import { Comment } from "../models/comment.model.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const {
@@ -356,18 +358,38 @@ const deleteVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid video id");
   }
 
-  const deleteResponse = await Video.findByIdAndDelete(videoId);
+  const video = await Video.findById(videoId);
 
-  if (!deleteResponse) {
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  if (video?.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(403, "You are not permitted for this action");
+  }
+
+  const deletedVideo = await Video.findByIdAndDelete(videoId);
+
+  if (!deletedVideo) {
     throw new ApiError(500, "Error while deleting video");
   }
 
-  if (deleteResponse.videoFile?.public_id) {
-    await deleteFromCloudinary(deleteResponse.videoFile.public_id, "video");
+  if (deletedVideo.videoFile?.public_id) {
+    await deleteFromCloudinary(deletedVideo.videoFile.public_id, "video");
   }
-  if (deleteResponse.thumbnail?.public_id) {
-    await deleteFromCloudinary(deleteResponse.thumbnail.public_id, "image");
+  if (deletedVideo.thumbnail?.public_id) {
+    await deleteFromCloudinary(deletedVideo.thumbnail.public_id, "image");
   }
+
+  //delete video like documents
+  await Like.deleteMany({
+    video: videoId,
+  });
+
+  //delete video comments documents
+  await Comment.deleteMany({
+    video: videoId,
+  });
 
   res.status(200).json(new ApiResponse(200, {}, "Video deleted successfully"));
 });
@@ -386,7 +408,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
   }
 
   if (video.owner?.toString() !== req.user?._id.toString()) {
-    throw new ApiError(403, "Your unauthorized for this action");
+    throw new ApiError(403, "Your not permmited for this action");
   }
 
   const updatedVideo = await findByIdAndUpdate(
