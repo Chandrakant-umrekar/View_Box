@@ -5,6 +5,7 @@ import { Video } from "../models/video.model.js";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 import mongoose, { isValidObjectId } from "mongoose";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { User } from "../models/user.model.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const {
@@ -161,32 +162,136 @@ const getVideoById = asyncHandler(async (req, res) => {
         as: "owner",
         pipeline: [
           {
+            $lookup: {
+              from: "subscriptions",
+              localField: "_id",
+              foreignField: "channel",
+              as: "subscribers",
+            },
+          },
+          {
+            $addFields: {
+              isSubscribed: {
+                $cond: {
+                  if: {
+                    $in: [req.user?._id, "$subscribers.subscriber"],
+                  },
+                  then: true,
+                  else: false,
+                },
+              },
+              subscriberCount: {
+                $size: "$subscribers",
+              },
+            },
+          },
+          {
             $project: {
-              fullName: 1,
               username: 1,
-              email: 1,
               avatar: 1,
+              isSubscribed,
+              subscriberCount,
             },
           },
         ],
       },
     },
     {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "likes",
+      },
+    },
+    {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "video",
+        as: "comments",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: "$owner",
+          },
+        ],
+      },
+    },
+    {
       $addFields: {
-        owner: {
-          $first: "owner",
+        likesCount: {
+          $size: "$likes",
         },
+
+        isLiked: {
+          $cond: {
+            if: {
+              $in: [req.user?._id, "$likes.likedBy"],
+            },
+            then: true,
+            else: false,
+          },
+        },
+        owner: {
+          $first: "$owner",
+        },
+      },
+    },
+    {
+      $project: {
+        videoFile: 1,
+        title: 1,
+        description: 1,
+        views: 1,
+        createdAt: 1,
+        duration: 1,
+        comments: 1,
+        owner: 1,
+        likesCount: 1,
+        isLiked: 1,
       },
     },
   ]);
 
-  if (video.length === 0) {
+  if (!video || video.length === 0) {
     throw new ApiError(500, "Error while fetching video");
   }
 
+  //increment views
+  await Video.findByIdAndUpdate(videoId, {
+    $inc: {
+      views: 1,
+    },
+  });
+
+  //add this video to user's watch history
+  await User.findByIdAndUpdate(req.user?._id, {
+    $addToSet: {
+      watchHistory: videoId,
+    },
+  });
+
   res
     .status(200)
-    .json(new ApiResponse(200, video[0], "Video fetched successfully"));
+    .json(
+      new ApiResponse(200, video[0], "Video and details fetched successfully")
+    );
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
