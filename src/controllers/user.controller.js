@@ -276,7 +276,7 @@ const changeUserAvatar = asyncHandler(async (req, res) => {
         },
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   ).select("-password");
 
   res
@@ -313,7 +313,7 @@ const changeUserCoverImage = asyncHandler(async (req, res) => {
         },
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   ).select("-password");
 
   res
@@ -428,7 +428,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
             $addFields: {
               owner: {
                 //getting object(1st element) from array
-                $first: "owner",
+                $first: "$owner",
               },
             },
           },
@@ -436,6 +436,10 @@ const getWatchHistory = asyncHandler(async (req, res) => {
       },
     },
   ]);
+
+  if (!user || user.length === 0) {
+    throw new ApiError(404, "User not found");
+  }
 
   res
     .status(200)

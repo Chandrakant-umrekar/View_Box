@@ -6,8 +6,102 @@ import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 import mongoose, { isValidObjectId } from "mongoose";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+const getAllVideos = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    query,
+    sortBy = "createdAt",
+    sortType = "desc",
+    userId,
+  } = req.query;
+  const pipeline = [];
+
+  //For search(using title & description) functionality
+  if (query) {
+    pipeline.push({
+      $search: {
+        index: "search-videos", //name of custom atlas search index
+        text: {
+          query: query,
+          path: ["title", "description"],
+        },
+      },
+    });
+  }
+
+  if (userId) {
+    if (!isValidObjectId(userId)) {
+      throw new ApiError(400, "Invalid user id");
+    }
+    pipeline.push({
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
+    });
+  }
+
+  pipeline.push({
+    $match: {
+      isPublished: true,
+    },
+  });
+
+  //only apply the custom sort if the user is not searching for text
+  if (!query && sortBy && sortType) {
+    pipeline.push({
+      $sort: {
+        [sortBy]: sortType === "asc" ? 1 : -1,
+      },
+    });
+  }
+
+  pipeline.push(
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner", //output directly to 'owner' field
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$owner", //flatten array into object
+    }
+  );
+
+  const videoAggregate = Video.aggregate(pipeline);
+
+  const options = {
+    page: parseInt(page, 10),
+    limit: parseInt(limit, 10),
+  };
+
+  const video = await Video.aggregatePaginate(videoAggregate, options);
+
+  if (!video) {
+    throw new ApiError(500, "Error while fetching videos");
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, video, "Videos fetched successfully"));
+});
+
 const uploadVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
+
+  if ([title, description].some((field) => field?.trim() === "")) {
+    throw new ApiError(400, "Title and Description are required");
+  }
 
   const videoLocalFilePath = req.files?.video?.[0]?.path;
   const thumbnailLocalFilePath = req.files?.thumbnail?.[0]?.path;
@@ -138,9 +232,7 @@ const updateVideo = asyncHandler(async (req, res) => {
   const updatedVideo = await Video.findByIdAndUpdate(
     videoId,
     { $set: updateFields },
-    {
-      new: true,
-    }
+    { returnDocument: "after" }
   );
 
   if (!updatedVideo) {
@@ -199,7 +291,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
         isPublished: !video.isPublished,
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   if (!updateVideo) {
