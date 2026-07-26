@@ -176,7 +176,10 @@ const getVideoById = asyncHandler(async (req, res) => {
               isSubscribed: {
                 $cond: {
                   if: {
-                    $in: [req.user?._id, "$subscribers.subscriber"],
+                    $in: [
+                      new mongoose.Types.ObjectId(req.user?._id),
+                      "$subscribers.subscriber",
+                    ],
                   },
                   then: true,
                   else: false,
@@ -206,35 +209,7 @@ const getVideoById = asyncHandler(async (req, res) => {
         as: "likes",
       },
     },
-    {
-      $lookup: {
-        from: "comments",
-        localField: "_id",
-        foreignField: "video",
-        as: "comments",
-        pipeline: [
-          {
-            $lookup: {
-              from: "users",
-              localField: "owner",
-              foreignField: "_id",
-              as: "owner",
-              pipeline: [
-                {
-                  $project: {
-                    username: 1,
-                    avatar: 1,
-                  },
-                },
-              ],
-            },
-          },
-          {
-            $unwind: "$owner",
-          },
-        ],
-      },
-    },
+
     {
       $addFields: {
         likesCount: {
@@ -263,7 +238,6 @@ const getVideoById = asyncHandler(async (req, res) => {
         views: 1,
         createdAt: 1,
         duration: 1,
-        comments: 1,
         owner: 1,
         likesCount: 1,
         isLiked: 1,
