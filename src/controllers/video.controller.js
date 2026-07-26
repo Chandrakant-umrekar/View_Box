@@ -332,20 +332,16 @@ const deleteVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid video id");
   }
 
-  const video = await Video.findById(videoId);
-
-  if (!video) {
-    throw new ApiError(404, "Video not found");
-  }
-
-  if (video?.owner.toString() !== req.user?._id.toString()) {
-    throw new ApiError(403, "You are not permitted for this action");
-  }
-
-  const deletedVideo = await Video.findByIdAndDelete(videoId);
+  const deletedVideo = await Video.findOneAndDelete({
+    _id: videoId,
+    owner: req.user?._id,
+  });
 
   if (!deletedVideo) {
-    throw new ApiError(500, "Error while deleting video");
+    throw new ApiError(
+      404,
+      "Video not found or you are not authorized to delete it"
+    );
   }
 
   if (deletedVideo.videoFile?.public_id) {
