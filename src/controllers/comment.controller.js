@@ -115,6 +115,10 @@ const addComment = asyncHandler(async (req, res) => {
     throw new ApiError(400, "content is required and must be text");
   }
 
+  if (content.length > 280) {
+    throw new ApiError(400, "Comment content cannot exceed 280 characters");
+  }
+
   const newComment = await Comment.create({
     content,
     owner: req.user?._id,
@@ -126,8 +130,8 @@ const addComment = asyncHandler(async (req, res) => {
   }
 
   res
-    .status(200)
-    .json(new ApiResponse(200, newComment, "Comment added successfully"));
+    .status(201)
+    .json(new ApiResponse(201, newComment, "Comment added successfully"));
 });
 
 const updateComment = asyncHandler(async (req, res) => {
@@ -176,12 +180,16 @@ const deleteComment = asyncHandler(async (req, res) => {
     owner: req.user?._id,
   });
 
-  if (!deleteComment) {
+  if (!deletedComment) {
     throw new ApiError(
       404,
       "Comment not found or your not authorized to delete it"
     );
   }
+
+  await Like.deleteMany({
+    comment: commentId,
+  });
 
   res
     .status(200)

@@ -110,4 +110,91 @@ const getTweetsFeed = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, tweets, "Tweets fetched successfully"));
 });
 
-export { getTweetsFeed };
+const addTweet = asyncHandler(async (req, res) => {
+  const { content } = req.body;
+
+  if (!content?.trim() || typeof content !== "string") {
+    throw new ApiError(400, "content is required and must be text");
+  }
+
+  if (content.length > 280) {
+    throw new ApiError(400, "Tweet content cannot exceed 280 characters");
+  }
+
+  const tweet = await Tweet.create({
+    content: content.trim(),
+    owner: req.user?._id,
+  });
+
+  if (!tweet) {
+    throw new ApiError(500, "Something went wrong while adding tweet");
+  }
+
+  res.status(201).json(new ApiResponse(201, tweet, "Tweet added successfully"));
+});
+
+const updateTweet = asyncHandler(async (req, res) => {
+  const { content } = req.body;
+  const { tweetId } = req.params;
+
+  if (!isValidObjectId(tweetId)) {
+    throw new ApiError(400, "Invalid tweet id");
+  }
+
+  if (!content?.trim() || typeof content !== "string") {
+    throw new ApiError(400, "content is required and must be text");
+  }
+
+  if (content.length > 280) {
+    throw new ApiError(400, "Tweet content cannot exceed 280 characters");
+  }
+
+  const updatedTweet = await Tweet.findOneAndUpdate(
+    {
+      _id: tweetId,
+      owner: req.user?._id,
+    },
+    {
+      $set: { content },
+    },
+    {
+      returnDocument: "after",
+    }
+  );
+
+  if (!updatedTweet) {
+    throw new ApiError(404, "Tweet not found or unauthorized");
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, updatedTweet, "Tweet updated successfully"));
+});
+
+const deleteTweet = asyncHandler(async (req, res) => {
+  const { tweetId } = req.params;
+
+  if (!isValidObjectId(tweetId)) {
+    throw new ApiError(400, "Invalid tweet id");
+  }
+
+  const deletedTweet = await Tweet.findOneAndDelete({
+    _id: tweetId,
+    owner: req.user?._id,
+  });
+
+  if (!deletedTweet) {
+    throw new ApiError(
+      404,
+      "Tweet not found or your not authorized to delete it"
+    );
+  }
+
+  await Like.deleteMany({
+    tweet: tweetId,
+  });
+
+  res.status(200).json(new ApiResponse(200, {}, "Tweet deleted successfully"));
+});
+
+export { getTweetsFeed, addTweet, updateTweet, deleteTweet };

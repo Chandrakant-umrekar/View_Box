@@ -140,8 +140,8 @@ const uploadVideo = asyncHandler(async (req, res) => {
   }
 
   res
-    .status(200)
-    .json(new ApiResponse(200, createdVideo, "Video uploaded successfully"));
+    .status(201)
+    .json(new ApiResponse(201, createdVideo, "Video uploaded successfully"));
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
