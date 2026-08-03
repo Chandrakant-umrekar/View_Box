@@ -9,64 +9,32 @@ import { User } from "../models/user.model.js";
 import { Like } from "../models/like.model.js";
 import { Comment } from "../models/comment.model.js";
 
+// homepage video feed
 const getVideosFeed = asyncHandler(async (req, res) => {
   const {
     page = 1,
     limit = 10,
-    query,
     sortBy = "createdAt",
     sortType = "desc",
-    userId,
   } = req.query;
-  const pipeline = [];
 
-  //For search(using title & description) functionality
-  if (query) {
-    pipeline.push({
-      $search: {
-        index: "search-videos", //name of custom atlas search index
-        text: {
-          query: query,
-          path: ["title", "description"],
-        },
-      },
-    });
-  }
-
-  //This gives user's uploaded videos
-  if (userId) {
-    if (!isValidObjectId(userId)) {
-      throw new ApiError(400, "Invalid user id");
-    }
-    pipeline.push({
+  const pipeline = [
+    {
       $match: {
-        owner: new mongoose.Types.ObjectId(userId),
+        isPublished: true,
       },
-    });
-  }
-
-  pipeline.push({
-    $match: {
-      isPublished: true,
     },
-  });
-
-  //only apply the custom sort if the user is not searching for text
-  if (!query && sortBy && sortType) {
-    pipeline.push({
+    {
       $sort: {
         [sortBy]: sortType === "asc" ? 1 : -1,
       },
-    });
-  }
-
-  pipeline.push(
+    },
     {
       $lookup: {
         from: "users",
         localField: "owner",
         foreignField: "_id",
-        as: "owner", //output directly to 'owner' field
+        as: "owner",
         pipeline: [
           {
             $project: {
@@ -78,9 +46,9 @@ const getVideosFeed = asyncHandler(async (req, res) => {
       },
     },
     {
-      $unwind: "$owner", //flatten array into object
-    }
-  );
+      $unwind: "$owner",
+    },
+  ];
 
   const videoAggregate = Video.aggregate(pipeline);
 
@@ -89,15 +57,77 @@ const getVideosFeed = asyncHandler(async (req, res) => {
     limit: parseInt(limit, 10),
   };
 
-  const video = await Video.aggregatePaginate(videoAggregate, options);
+  const feedResults = await Video.aggregatePaginate(videoAggregate, options);
 
-  if (!video) {
-    throw new ApiError(500, "Error while fetching videos");
+  if (!feedResults) {
+    throw new ApiError(500, "Error while fetching videos feed");
   }
 
-  res
+  return res
     .status(200)
-    .json(new ApiResponse(200, video, "Videos fetched successfully"));
+    .json(
+      new ApiResponse(200, feedResults, "Videos feed fetched successfully")
+    );
+});
+
+// for user text search querying
+const searchVideos = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, query } = req.query;
+
+  if (!query?.trim()) {
+    throw new ApiError(400, "Search query text is required");
+  }
+
+  // case-insensitive regex matching for title/description
+  const searchQuery = {
+    isPublished: true,
+    $or: [
+      { title: { $regex: query.trim(), $options: "i" } },
+      { description: { $regex: query.trim(), $options: "i" } },
+    ],
+  };
+
+  const searchPipeline = Video.aggregate([
+    {
+      $match: searchQuery,
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$owner",
+    },
+  ]);
+
+  const options = {
+    page: parseInt(page, 10),
+    limit: parseInt(limit, 10),
+  };
+
+  const searchResults = await Video.aggregatePaginate(searchPipeline, options);
+
+  if (!searchResults) {
+    throw new ApiError(500, "Error while processing video search");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, searchResults, "Search results fetched successfully")
+    );
 });
 
 const uploadVideo = asyncHandler(async (req, res) => {
@@ -414,4 +444,5 @@ export {
   deleteVideo,
   getVideosFeed,
   togglePublishStatus,
+  searchVideos,
 };
