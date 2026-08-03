@@ -14,4 +14,6 @@ const tweetSchema = new Schema(
   { timestamps: true }
 );
 
-export const Playlist = mongoose.model("Playlist", playlistSchema);
+videoSchema.plugin(mongooseAggregatePaginate);
+
+export const Tweet = mongoose.model("Tweet", tweetSchema);

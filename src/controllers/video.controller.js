@@ -9,7 +9,7 @@ import { User } from "../models/user.model.js";
 import { Like } from "../models/like.model.js";
 import { Comment } from "../models/comment.model.js";
 
-const getAllVideos = asyncHandler(async (req, res) => {
+const getVideosFeed = asyncHandler(async (req, res) => {
   const {
     page = 1,
     limit = 10,
@@ -33,6 +33,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
     });
   }
 
+  //This gives user's uploaded videos
   if (userId) {
     if (!isValidObjectId(userId)) {
       throw new ApiError(400, "Invalid user id");
@@ -406,4 +407,11 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     );
 });
 
-export { uploadVideo, getVideoById, updateVideo };
+export {
+  uploadVideo,
+  getVideoById,
+  updateVideo,
+  deleteVideo,
+  getVideosFeed,
+  togglePublishStatus,
+};
