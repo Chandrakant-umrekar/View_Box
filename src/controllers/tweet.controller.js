@@ -10,30 +10,14 @@ const getTweetsFeed = asyncHandler(async (req, res) => {
     limit = 10,
     sortBy = "createdAt",
     sortType = "desc",
-    userId,
   } = req.query;
 
-  const pipeline = [];
-
-  if (userId) {
-    if (!isValidObjectId(userId)) {
-      throw new ApiError(400, "Invalid user id");
-    }
-    //only users own tweets
-    pipeline.push({
-      $match: {
-        owner: new mongoose.Types.ObjectId(userId),
+  const pipeline = [
+    {
+      $sort: {
+        [sortBy]: sortType === "desc" ? -1 : 1,
       },
-    });
-  }
-
-  pipeline.push({
-    $sort: {
-      [sortBy]: sortType === "desc" ? -1 : 1,
     },
-  });
-
-  pipeline.push(
     {
       $lookup: {
         from: "users",
@@ -88,8 +72,8 @@ const getTweetsFeed = asyncHandler(async (req, res) => {
         isLiked: 1,
         createdAt: 1,
       },
-    }
-  );
+    },
+  ];
 
   const options = {
     page: parseInt(page, 10),
