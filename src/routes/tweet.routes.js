@@ -11,11 +11,11 @@ const router = Router();
 
 router.route("/feed").get(getTweetsFeed);
 
-router.route("/add-tweet").post(verifyJwt, addTweet);
+//secured routes
+router.use(verifyJwt);
 
-router
-  .route("/tweet/:tweetId")
-  .patch(verifyJwt, updateTweet)
-  .delete(verifyJwt, deleteTweet);
+router.route("/add-tweet").post(addTweet);
+
+router.route("/tweet/:tweetId").patch(updateTweet).delete(deleteTweet);
 
 export default router;
