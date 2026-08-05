@@ -38,7 +38,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     );
   }
 
-  res
+  return res
     .status(201)
     .json(new ApiResponse(201, { isLiked: true }, "Like added to the video"));
 });
@@ -81,7 +81,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
     );
   }
 
-  res
+  return res
     .status(201)
     .json(new ApiResponse(201, { isLiked: true }, "Like added to the comment"));
 });
@@ -120,7 +120,7 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
     );
   }
 
-  res
+  return res
     .status(201)
     .json(new ApiResponse(201, { isLiked: true }, "Like added to the tweet"));
 });
@@ -203,7 +203,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Something went wrong while getting liked videos");
   }
 
-  res
+  return res
     .status(200)
     .json(
       new ApiResponse(200, likedVideos, "liked videos fetched successfully")

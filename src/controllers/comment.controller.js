@@ -98,7 +98,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
     );
   }
 
-  res
+  return res
     .status(200)
     .json(new ApiResponse(200, commentsList, "comments fetched successfully"));
 });
@@ -129,7 +129,7 @@ const addComment = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Something went wrong while adding comment");
   }
 
-  res
+  return res
     .status(201)
     .json(new ApiResponse(201, newComment, "Comment added successfully"));
 });
@@ -163,7 +163,7 @@ const updateComment = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Comment not found or your unauthorized");
   }
 
-  res
+  return res
     .status(200)
     .json(new ApiResponse(200, updatedComment, "Comment updated successfully"));
 });
@@ -191,7 +191,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     comment: commentId,
   });
 
-  res
+  return res
     .status(200)
     .json(new ApiResponse(200, {}, "Comment deleted successfully"));
 });

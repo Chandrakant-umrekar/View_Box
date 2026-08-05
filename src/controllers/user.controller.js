@@ -141,7 +141,7 @@ const loginUser = asyncHandler(async (req, res) => {
     secure: true,
   };
 
-  res
+  return res
     .status(200)
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)
@@ -168,7 +168,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     secure: true,
   };
 
-  res
+  return res
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
@@ -208,7 +208,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       user._id
     );
 
-    res
+    return res
       .status(200)
       .cookie("accessToken", accessToken, options)
       .cookie("refreshToken", refreshToken, options)
@@ -238,13 +238,13 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   await user.save({ validateBeforeSave: false });
 
-  res
+  return res
     .status(200)
     .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-  res
+  return res
     .status(200)
     .json(new ApiResponse(200, req.user, "Current user fetched successfully"));
 });
@@ -281,7 +281,7 @@ const changeUserAvatar = asyncHandler(async (req, res) => {
     { returnDocument: "after" }
   ).select("-password");
 
-  res
+  return res
     .status(200)
     .json(new ApiResponse(200, updatedUser, "Avatar updated successfully"));
 });
@@ -318,7 +318,7 @@ const changeUserCoverImage = asyncHandler(async (req, res) => {
     { returnDocument: "after" }
   ).select("-password");
 
-  res
+  return res
     .status(200)
     .json(
       new ApiResponse(200, updatedUser, "Cover image updated successfully")
@@ -389,7 +389,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Channel does not exists");
   }
 
-  res
+  return res
     .status(200)
     .json(new ApiResponse(200, channelInfo[0], "Channel fetched successfully"));
 });
@@ -443,7 +443,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
-  res
+  return res
     .status(200)
     .json(
       new ApiResponse(
