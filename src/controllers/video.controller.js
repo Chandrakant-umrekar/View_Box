@@ -48,6 +48,16 @@ const getVideosFeed = asyncHandler(async (req, res) => {
     {
       $unwind: "$owner",
     },
+    {
+      $project: {
+        thumbnail: 1,
+        title: 1,
+        duration: 1,
+        views: 1,
+        owner: 1,
+        createdAt: 1,
+      },
+    },
   ];
 
   const videoAggregate = Video.aggregate(pipeline);
@@ -109,6 +119,16 @@ const searchVideos = asyncHandler(async (req, res) => {
     },
     {
       $unwind: "$owner",
+    },
+    {
+      $project: {
+        thumbnail: 1,
+        title: 1,
+        duration: 1,
+        views: 1,
+        owner: 1,
+        createdAt: 1,
+      },
     },
   ]);
 
@@ -315,7 +335,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Video not found");
   }
 
-  if (!newThumbnailPath && !title && !description) {
+  if (!newThumbnailPath && !title?.trim() && !description?.trim()) {
     throw new ApiError(400, "At least one field must be provided");
   }
 
@@ -341,14 +361,17 @@ const updateVideo = asyncHandler(async (req, res) => {
     };
   }
 
-  const updatedVideo = await Video.findByIdAndUpdate(
-    videoId,
+  const updatedVideo = await Video.findOneAndUpdate(
+    { _id: videoId, owner: req.user?._id },
     { $set: updateFields },
     { returnDocument: "after" }
   );
 
   if (!updatedVideo) {
-    throw new ApiError(500, "Error while updating video");
+    throw new ApiError(
+      403,
+      "Video not found or your unauthorized for this action"
+    );
   }
 
   res

@@ -147,7 +147,7 @@ const updateTweet = asyncHandler(async (req, res) => {
   );
 
   if (!updatedTweet) {
-    throw new ApiError(404, "Tweet not found or unauthorized");
+    throw new ApiError(404, "Tweet not found or your unauthorized");
   }
 
   res
