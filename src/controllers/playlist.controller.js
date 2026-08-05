@@ -89,7 +89,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 
   const playlists = await Playlist.find(
     {
-      owner: req.user?._id,
+      owner: userId,
     },
     "name description" //only fetch this fields
   );
@@ -185,4 +185,10 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     );
 });
 
-export { getPlaylistBYId, getUserPlaylists, createPlaylist };
+export {
+  getPlaylistBYId,
+  getUserPlaylists,
+  createPlaylist,
+  deletePlaylist,
+  updatePlaylist,
+};
